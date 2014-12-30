@@ -14,6 +14,10 @@ class Keyring_Instagram_Importer extends Keyring_Importer_Base {
 
 	var $auto_import = false;
 
+	function remove_hashtags($string){
+	    return preg_replace('/#(?=[\w-]+)/', '', 
+	        preg_replace('/(?:#[\w-]+\s*)+$/', '', $string));
+	}
 	function handle_request_options() {
 		// Validate options and store them so they can be used in auto-imports
 		if ( empty( $_POST['category'] ) || !ctype_digit( $_POST['category'] ) )
@@ -101,7 +105,10 @@ class Keyring_Instagram_Importer extends Keyring_Importer_Base {
 			// Post title can be empty for Images, but it makes them easier to manage if they have *something*
 			$post_title = __( 'Posted on Instagram', 'keyring' );
 			if ( !empty( $post->caption ) )
-				$post_title = strip_tags( $post->caption->text );
+				$post_title = trim(strip_tags( $this->remove_hashtags($post->caption->text) ));
+				
+			if (empty($post_title))
+				$post_title = $post->id;
 
 			// Parse/adjust dates
 			$post_date_gmt = $post->created_time;
@@ -161,6 +168,9 @@ class Keyring_Instagram_Importer extends Keyring_Importer_Base {
 				'instagram_raw'
 			);
 		}
+		//Last minute filtering of post data
+		if(has_filter('keyring_instagram_importer_filter_posts')) 
+			$this->posts = apply_filters('keyring_instagram_importer_filter_posts', $this->posts);
 	}
 
 	function insert_posts() {
